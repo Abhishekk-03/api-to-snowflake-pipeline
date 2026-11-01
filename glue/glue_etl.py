@@ -8,7 +8,6 @@ spark = SparkSession.builder\
     .appName('API-S3')\
     .getOrCreate()
 
-
 s3_client = boto3.client("s3")
 paginator = s3_client.get_paginator("list_objects_v2")
 
@@ -28,7 +27,7 @@ for page in paginator.paginate(
 # Step 2: Read existing checkpoint from S3
 response = s3_client.get_object(
         Bucket='checkpoint-obj',
-        Key='api-checkpoint/'
+        Key='api-checkpoint.json/'
     )
 
 body = response["Body"].read().decode("utf-8")
