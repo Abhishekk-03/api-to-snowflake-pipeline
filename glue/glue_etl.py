@@ -27,7 +27,7 @@ for page in paginator.paginate(
 # Step 2: Read existing checkpoint from S3
 response = s3_client.get_object(
         Bucket='checkpoint-obj',
-        Key='api-checkpoint/'
+        Key='api-checkpoint/api-checkpoint.json'
     )
 
 body = response["Body"].read().decode("utf-8")
