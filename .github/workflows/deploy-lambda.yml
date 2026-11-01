@@ -1,40 +1,65 @@
 
-name: API to S3 Lambda CI-CD
+name: API to S3 Lambda and Glue CI-CD
 
 on:
   push:
     branches:
       - main
+
   workflow_dispatch:
 
 jobs:
   installation:
-    name: Deploy to AWS Lambda
+    name: Deploy Lambda and Glue to AWS
     runs-on: ubuntu-latest
 
     steps:
+      # 1. Get repository code
       - name: Get Code
         uses: actions/checkout@v4
 
+      # 2. Setup Python
       - name: Setup Python
         uses: actions/setup-python@v5
         with:
           python-version: "3.12"
 
-      - name: Install zip tool
-        uses: montudor/action-zip@v1
-
-      - name: Create zip file for Lambda
-        run: zip -r code.zip .
-
-      - name: AWS CLI v2
-        uses: imehedi/actions-awscli-v2@latest
+      # 3. Configure AWS credentials
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v4
         with:
-          args: >-
-            lambda update-function-code
-            --function-name arn:aws:lambda:ap-south-1:093831816348:function:my_api_to_s3_lambda
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ap-south-1
+
+      # 4. Install Lambda dependencies
+      - name: Install Lambda Dependencies
+        run: |
+          mkdir package
+          pip install -r requirements.txt -t package
+
+      # 5. Create Lambda ZIP
+      - name: Create ZIP File for Lambda
+        run: |
+          cp lambda/lambda_function.py package/
+          cd package
+          zip -r ../code.zip .
+
+      # 6. Deploy Lambda
+      - name: Deploy Lambda
+        run: |
+          aws lambda update-function-code \
+            --function-name arn:aws:lambda:ap-south-1:093831816348:function:my_api_to_s3_lambda \
             --zip-file fileb://code.zip
-        env:
-          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
-          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY_ID }}
-          AWS_REGION: ap-south-1
+
+      # 7. Deploy Glue script to S3
+      - name: Deploy Glue Script to S3
+        run: |
+          aws s3 cp glue/glue_etl.py \
+            s3://scripts-obj/glue-scripts/glue_etl.py
+
+      # 8. Deployment status
+      - name: Deployment Status
+        run: |
+          echo "Lambda deployment completed!"
+          echo "Glue script uploaded successfully!"
