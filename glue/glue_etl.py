@@ -3,6 +3,7 @@ from pyspark.sql.functions import *
 from pyspark.sql.types import IntegerType, DoubleType
 import json
 import boto3
+import sys
 
 spark = SparkSession.builder\
     .appName('API-S3')\
@@ -46,8 +47,8 @@ unprocessed_files = [
 
 # Step 4: Check whether new files exist
 if not unprocessed_files:
-    raise Exception("There is no file to process")
-
+    print("No new files found. Skipping ETL processing.")
+    sys.exit(0)
 
 # Step 5: Load new files into Spark
 if unprocessed_files:
