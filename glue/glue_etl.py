@@ -8,6 +8,7 @@ spark = SparkSession.builder\
     .appName('API-S3')\
     .getOrCreate()
 
+
 s3_client = boto3.client("s3")
 paginator = s3_client.get_paginator("list_objects_v2")
 
@@ -25,17 +26,16 @@ for page in paginator.paginate(
 
 
 # Step 2: Read existing checkpoint from S3
-try:
-    response = s3_client.get_object(
+response = s3_client.get_object(
         Bucket='checkpoint-obj',
         Key='api-checkpoint/'
     )
 
-    existing_files = set(
-        json.loads(response["Body"].read().decode("utf-8"))
-    )
+body = response["Body"].read().decode("utf-8")
 
-except s3_client.exceptions.NoSuchKey:
+if body:
+    existing_files = set(json.loads(body))
+else:
     existing_files = set()
 
 
@@ -44,7 +44,6 @@ unprocessed_files = [
     file for file in all_files
     if file not in existing_files
 ]
-
 
 # Step 4: Check whether new files exist
 if not unprocessed_files:
@@ -67,7 +66,6 @@ if unprocessed_files:
     )
 
 print("Raw JSON data loaded successfully")
-
 
 
 users_df = raw_df.select(
@@ -296,3 +294,16 @@ df.write \
     )
 
 print("Data successfully stored in S3 Parquet format")
+
+updated_files = existing_files.union(
+    set(unprocessed_files)
+)
+
+s3_client.put_object(
+    Bucket="checkpoint-obj",
+    Key="api-checkpoint.json",
+    Body=json.dumps(sorted(updated_files)),
+    ContentType="application/json"
+)
+
+print("Checkpoint updated successfully")
